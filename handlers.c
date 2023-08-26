@@ -1,217 +1,80 @@
-/*
- * File: handlers.c
- * Auth: Musa_kalamz A Ogunsolu
- *	 Uchenna T ikejiaku
- */
-
 #include "main.h"
 
-unsigned char handle_flags(const char *flag, char *index);
-unsigned char handle_length(const char *modifier, char *index);
-int handle_width(va_list args, const char *modifier, char *index);
-int handle_precision(va_list args, const char *modifier, char *index);
-
-
 /**
- * handle_specifiers - Matches a conversion specifier with
- *                     a corresponding conversion function.
- * specifier: The formag specifier.
- * @int: integer
- * @char: character
+ * handler - Format controller
+ * @str: String format
+ * @list: List of arguments
  *
- * Return: If a conversion function is matched - a pointer to the function.
- *         Otherwise - NULL.
- */
-unsigned int (*handle_specifiers(const char *specifier))(va_list, buffer_t *,
-	unsigned char, int, int, unsigned char);
-
-/**
- * handle_flags - Matches flags with corresponding values.
- * @flag: A pointer to a potential string of flags.
- * @index: An index counter for the original format string.
- *
- * Return: If flag characters are matched - a corresponding value.
- *         Otherwise - 0.
- */
-unsigned char handle_flags(const char *flag, char *index)
+ * Return: Total size of arguments with the total size of the base string
+ **/
+int handler(const char *str, va_list list)
 {
-	int i, j;
-	unsigned char ret = 0;
-	flag_t flags[] = {
-		{'+', PLUS},
-		{' ', SPACE},
-		{'#', HASH},
-		{'0', ZERO},
-		{'-', NEG},
-		{0, 0}
+	int size, i, aux;
+
+	size = 0;
+	for (i = 0; str[i] != 0; i++)
+	{
+		if (str[i] == '%')
+		{
+			aux = percent_handler(str, list, &i);
+			if (aux == -1)
+				return (-1);
+
+			size += aux;
+			continue;
+		}
+
+		_putchar(str[i]);
+		size = size + 1;
+	}
+
+
+	return (size);
+}
+
+/**
+ * percent_handler - Controller for percent format
+ * @str: String format
+ * @list: List of arguments
+ * @i: Iterator
+ *
+ * Return: Size of the numbers of elements printed
+ **/
+int percent_handler(const char *str, va_list list, int *i)
+{
+	int size, j, number_formats;
+	format formats[] = {
+		{'s', print_string}, {'c', print_char},
+		{'d', print_integer}, {'i', print_integer},
+		{'b', print_binary}, {'u', print_unsigned},
+		{'o', print_octal}, {'x', print_hexadecimal_low},
+		{'X', print_hexadecimal_upp}, {'p', print_pointer},
+		{'r', print_rev_string}, {'R', print_rot}
 	};
 
-	for (i = 0; flag[i]; i++)
-	{
-		for (j = 0; flags[j].flag != 0; j++)
-		{
-			if (flag[i] == flags[j].flag)
-			{
-				(*index)++;
-				if (ret == 0)
-					ret = flags[j].value;
-				else
-					ret |= flags[j].value;
-				break;
-			}
-		}
-		if (flags[j].value == 0)
-			break;
-	}
+	*i = *i + 1;
 
-	return (ret);
-}
-
-/**
- * handle_length - Matches length modifiers with their corresponding value.
- * @modifier: A pointer to a potential length modifier.
- * @index: An index counter for the original format string.
- *
- * Return: If a lenth modifier is matched - its corresponding value.
- *         Otherwise - 0.
- */
-unsigned char handle_length(const char *modifier, char *index)
-{
-	if (*modifier == 'h')
-	{
-		(*index)++;
-		return (SHORT);
-	}
-
-	else if (*modifier == 'l')
-	{
-		(*index)++;
-		return (LONG);
-	}
-
-	return (0);
-}
-
-/**
- * handle_width - Matches a width modifier with its corresponding value.
- * @args: A va_list of arguments.
- * @modifier: A pointer to a potential width modifier.
- * @index: An index counter for the original format string.
- *
- * Return: If a width modifier is matched - its value.
- *         Otherwise - 0.
- */
-int handle_width(va_list args, const char *modifier, char *index)
-{
-	int value = 0;
-
-	while ((*modifier >= '0' && *modifier <= '9') || (*modifier == '*'))
-	{
-		(*index)++;
-
-		if (*modifier == '*')
-		{
-			value = va_arg(args, int);
-			if (value <= 0)
-				return (0);
-			return (value);
-		}
-
-		value *= 10;
-		value += (*modifier - '0');
-		modifier++;
-	}
-
-	return (value);
-}
-
-/**
- * handle_precision - Matches a precision modifier with
- *                    its corresponding value.
- * @args: A va_list of arguments.
- * @modifier: A pointer to a potential precision modifier.
- * @index: An index counter for the original format string.
- *
- * Return: If a precision modifier is matched - its value.
- *         If the precision modifier is empty, zero, or negative - 0.
- *         Otherwise - -1.
- */
-int handle_precision(va_list args, const char *modifier, char *index)
-{
-	int value = 0;
-
-	if (*modifier != '.')
+	if (str[*i] == '\0')
 		return (-1);
 
-	modifier++;
-	(*index)++;
-
-	if ((*modifier <= '0' || *modifier > '9') &&
-	     *modifier != '*')
+	if (str[*i] == '%')
 	{
-		if (*modifier == '0')
-			(*index)++;
-		return (0);
+		_putchar('%');
+		return (1);
 	}
 
-	while ((*modifier >= '0' && *modifier <= '9') ||
-	       (*modifier == '*'))
+	number_formats = sizeof(formats) / sizeof(formats[0]);
+	for (size = j = 0; j < number_formats; j++)
 	{
-		(*index)++;
-
-		if (*modifier == '*')
+		if (str[*i] == formats[j].type)
 		{
-			value = va_arg(args, int);
-			if (value <= 0)
-				return (0);
-			return (value);
+			size = formats[j].f(list);
+			return (size);
 		}
 
-		value *= 10;
-		value += (*modifier - '0');
-		modifier++;
 	}
 
-	return (value);
-}
+	_putchar('%'), _putchar(str[*i]);
 
-/**
- * handle_specifiers - Matches a conversion specifier with
- *                     a corresponding conversion function.
- * specifier: A pointer to a potential conversion specifier.
- * @int: integer
- * @char: character
- *
- * Return: If a conversion function is matched - a pointer to the function.
- *         Otherwise - NULL.
- */
-unsigned int (*handle_specifiers(const char *specifier))(va_list, buffer_t *,
-		unsigned char, int, int, unsigned char)
-{
-	int i;
-	converter_t converters[] = {
-		{'c', convert_c},
-		{'s', convert_s},
-		{'d', convert_di},
-		{'i', convert_di},
-		{'%', convert_percent},
-		{'b', convert_b},
-		{'u', convert_u},
-		{'o', convert_o},
-		{'x', convert_x},
-		{'X', convert_X},
-		{'S', convert_S},
-		{'p', convert_p},
-		{'r', convert_r},
-		{'R', convert_R},
-		{0, NULL}
-	};
-
-	for (i = 0; converters[i].func; i++)
-	{
-		if (converters[i].specifier == *specifier)
-			return (converters[i].func);
-	}
-
-	return (NULL);
+	return (2);
 }
