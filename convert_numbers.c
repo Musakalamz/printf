@@ -44,13 +44,12 @@ unsigned int convert_di(va_list args, buffer_t *output,
 		ret += _memcpy(output, &space, 1);
 	if (prec <= 0 && NEG_FLAG == 0) /* Handle width  */
 	{
-		if (d == LONG_MIN)
-			count += 19;
-		else
+		if (d != LONG_MIN)
 		{
 			for (copy = (d < 0) ? -d : d; copy > 0; copy /= 10)
 				count++;
 		}
+		count += 19;
 		count += (d == 0) ? 1 : 0;
 		count += (d < 0) ? 1 : 0;
 		count += (PLUS_FLAG == 1 && d >= 0) ? 1 : 0;
